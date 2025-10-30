@@ -5,3 +5,7 @@
 *.tar.gz
 *.deb
 cudnn*.Identifier
+transcription-service/requirements.txt
+.models/*
+models/*
+

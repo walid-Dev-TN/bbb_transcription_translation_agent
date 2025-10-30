@@ -1,0 +1,9 @@
+FROM libretranslate/libretranslate:latest
+
+# Switch to root to install curl
+USER root
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+# Switch back to default user
+USER libretranslate
+

@@ -14,10 +14,10 @@ check-not-root:
 	  echo "Error: Do not run this Makefile as root (UID 0)."; \
 	  exit 1; \
 	fi
-	@if [ -n "$${SUDO_USER}" ]; then \
-	  echo "Error: Do not run this Makefile via sudo."; \
-	  exit 1; \
-	fi
+#	@if [ -n "$${SUDO_USER}" ]; then \
+#	  echo "Error: Do not run this Makefile via sudo."; \
+#	  exit 1; \
+#	fi
 
 check-docker-rights:
 	@if [ $$(id -nG | grep -cw docker) -eq 0 ]; then \

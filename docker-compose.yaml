@@ -11,10 +11,11 @@ services:
     networks:
       - bbb-translation-bot
     ports:
-      - 8080:8080
+      - 9090:8080
     depends_on:
       - changeset-service
       - transcription-service
+      - translation-service
 
   changeset-service:
     container_name: changeset-service
@@ -29,42 +30,38 @@ services:
   transcription-service:
     container_name: transcription-service
     hostname: transcription-service
+    restart: always
     build:
-      context: https://github.com/bigbluebutton-bot/transcription-service.git
-      dockerfile: Dockerfile
+      context: ./transcription-service
+      dockerfile: Dockerfile.cpu
     networks:
       - bbb-translation-bot
     env_file:
       - .env
     volumes:
       - ./.models:/app/.models
-      # - ./logs:/app/logs
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: -1
-              capabilities: ["gpu"]
+      - /tmp:/tmp  
+    ports:
+      - "8001:8001"  # make sure port 8001 is exposed to match bot's health check
+    healthcheck:
+      test: ["CMD-SHELL", "python healthcheck.py || exit 1"]
+      interval: 30s
+      retries: 3
 
   translation-service:
     container_name: translation-service
     hostname: translation-service
-    image: libretranslate/libretranslate:latest-cuda
+    image: libretranslate/libretranslate:latest
     restart: unless-stopped
-    tty: true
+    ports:
+      - "5000:5000"   # internal port is 5000, bot will call transcription-service separately
     healthcheck:
-      test: ['CMD-SHELL', './venv/bin/python scripts/healthcheck.py']     
-    command: --ssl --ga-id MY-GA-ID
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/health || exit 1"]
+      interval: 30s
+      retries: 5
+    command: ["--ssl", "--ga-id", "MY-GA-ID"]
     volumes:
       - ./.models/libretranslate:/root/.local:rw
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: -1
-              capabilities: ["gpu"]
     networks:
       - bbb-translation-bot
 
@@ -83,3 +80,4 @@ services:
 networks:
   bbb-translation-bot:
     driver: bridge
+

@@ -1,0 +1,30 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        libsndfile1 \
+        libgomp1 \
+        curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy source code
+COPY . /app
+
+# Upgrade pip
+RUN pip install --upgrade pip
+
+# Install CPU-only PyTorch + dependencies
+RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu \
+    && pip install --no-cache-dir -r requirements.txt
+
+# Disable CUDA in environment
+ENV USE_GPU=false
+ENV CUDA_VISIBLE_DEVICES=
+
+EXPOSE 8001
+
+CMD ["python", "main.py"]
+
