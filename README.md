@@ -2,7 +2,7 @@
 
 **BBB-Translation-Bot** helps with communication in [BigBlueButton (BBB)](https://bigbluebutton.org/) meetings by providing **real-time transcription and translation**. The bot listens to the meeting’s audio, turns spoken words into text, and shows translations using a self-hosted version of [Whisper AI](https://github.com/openai/whisper) ([faster-whisper](https://github.com/SYSTRAN/faster-whisper)) and [LibreTranslate](https://libretranslate.com/). It automatically adds the text as closed captions in BBB. 📝🌐
 
-> **‼️🚨--> This project only works with BBB 3.0 <--🚨‼️**
+> **‼️🚨--> This project only works with BBB 3.0 and greenlight 3 <--🚨‼️**
 
 ---
 
@@ -22,6 +22,12 @@ Before you begin, ensure you have the following:
     - Windows: [WSL2](https://docs.microsoft.com/en-us/windows/wsl/install) with Ubuntu 22.04.
   - **Access:** Root access to your machine.
 
+Bot Joining Mechanism:
+✅ Greenlight form automation (name input, checkbox, join button)
+✅ BBB HTML5 client loading
+✅ Listen-only mode selection
+✅ Participant visibility in BBB meetings
+✅ Screenshot debugging capability
 
 ### 💻 Developer Setup
 
