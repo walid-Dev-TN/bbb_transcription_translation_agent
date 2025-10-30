@@ -1,0 +1,23 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y git ffmpeg curl && rm -rf /var/lib/apt/lists/*
+
+# Copy source code
+COPY . /app
+
+# Install CPU-only PyTorch + torchaudio + whisper + dependencies
+RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu \
+    && pip install --no-cache-dir git+https://github.com/openai/whisper.git \
+    && pip install --no-cache-dir -r requirements.txt
+
+# Explicitly disable CUDA
+ENV USE_GPU=false
+ENV CUDA_VISIBLE_DEVICES=""
+
+EXPOSE 8001
+
+CMD ["python", "main.py"]
+
