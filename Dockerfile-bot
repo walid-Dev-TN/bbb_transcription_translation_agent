@@ -1,0 +1,64 @@
+# Start by building the application.
+FROM golang:alpine as build
+
+# Install Chrome and dependencies in the build stage
+RUN apk add --no-cache \
+    chromium \
+    chromium-chromedriver \
+    bash \
+    curl \
+    git \
+    make \
+    gcc \
+    g++ \
+    libc-dev
+
+# Verify Chrome installation
+RUN which chromium-browser && ls -la /usr/bin/chromium-browser
+
+WORKDIR /go/src/app
+COPY ./bot/*.go ./bot/go.mod ./bot/go.sum ./
+COPY ./bot/public/* ./public/
+
+RUN go mod tidy
+RUN go get .
+
+# Build the application
+RUN CGO_ENABLED=0 go build -o /go/bin/app
+
+# ------------------------------------------------------
+# Now create a runtime image with Chrome
+FROM alpine:latest as runtime
+
+# Install Chrome and dependencies in runtime image
+RUN apk add --no-cache \
+    chromium \
+    chromium-chromedriver \
+    # Chrome dependencies
+    nss \
+    freetype \
+    freetype-dev \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    # Basic shell utilities
+    bash
+
+# Verify Chrome installation
+RUN which chromium-browser && ls -la /usr/bin/chromium-browser
+
+# Create app user with proper permissions
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# Set working directory with proper permissions
+WORKDIR /app
+RUN chown appuser:appgroup /app
+
+# Copy the built application from the build stage
+COPY --from=build --chown=appuser:appgroup /go/bin/app /app/app
+COPY --from=build --chown=appuser:appgroup /go/src/app/public /app/public
+
+USER appuser
+
+# Set start command
+CMD ["/app/app"]
