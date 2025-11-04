@@ -168,8 +168,15 @@ def main() -> None:
 
     # Pipeline callbacks
     def callback(dp: DataPackage[data.AudioData]) -> None:
+        print(f"🔍 DEBUG: Callback triggered")
+        print(f"🔍 DEBUG: dp.data exists: {dp.data is not None}")
+        if dp.data:
+            print(f"🔍 DEBUG: confirmed_words: {dp.data.confirmed_words}")
+            print(f"🔍 DEBUG: unconfirmed_words: {dp.data.unconfirmed_words}")
+            print(f"🔍 DEBUG: audio_data type: {type(dp.data.audio_data) if dp.data.audio_data else 'None'}")
+            print(f"🔍 DEBUG: audio_data shape: {dp.data.audio_data.shape if hasattr(dp.data.audio_data, 'shape') else 'N/A'}")
+        
         if dp.data and dp.data.confirmed_words is not None and dp.data.unconfirmed_words is not None:
-           
             # log transcribed text
             confirmed_text = " ".join([word.word for word in dp.data.confirmed_words])
             print(f"🎯 TRANSCRIPTION: '{confirmed_text}'")
@@ -210,20 +217,32 @@ def main() -> None:
                 # send text to client
                 client = client_dict[instance_id]
                 client.stream_client.send_message(str.encode(text))
+        else:
+            print(f"🔍 DEBUG: No transcription output - conditions not met")
+            print(f"🔍 DEBUG: Has data: {dp.data is not None}")
+            if dp.data:
+                print(f"🔍 DEBUG: Has confirmed_words: {dp.data.confirmed_words is not None}")
+                print(f"🔍 DEBUG: Has unconfirmed_words: {dp.data.unconfirmed_words is not None}")
 
 
     def exit_callback(dp: DataPackage[data.AudioData]) -> None:
+        print(f"🔍 DEBUG: Exit callback - message: {dp.controllers[-1].phases[-1].modules[-1].message if dp.controllers else 'No controllers'}")
         # log.info(f"Exit: {dp.controllers[-1].phases[-1].modules[-1].message}")
-        pass
 
     def overflow_callback(dp: DataPackage[data.AudioData]) -> None:
+        print(f"🔍 DEBUG: Overflow callback")
         # log.info("Overflow")
-        pass
 
     def outdated_callback(dp: DataPackage[data.AudioData]) -> None:
+        print(f"🔍 DEBUG: Outdated callback")
         log.info("Outdated", extra={"data_package": dp})
 
     def error_callback(dp: DataPackage[data.AudioData]) -> None:
+        print(f"🚨 DEBUG: Error callback triggered")
+        print(f"🚨 DEBUG: Errors: {dp.errors if dp.errors else 'No errors'}")
+        if dp.errors:
+            for error in dp.errors:
+                print(f"🚨 DEBUG: Error message: {error.get('message', 'No message')}")
         log.error("Pipeline error", extra={"data_package": dp})
 
     # Create server
@@ -236,10 +255,11 @@ def main() -> None:
 
     # Handle new connections and disconnections, timeouts and messages
     def OnConnected(c: StreamClient) -> None:
-        print(f"Connected by {c.tcp_address()}")
+        print(f"🔍 DEBUG: New client connected: {c.tcp_address()}")
 
         # Create new client
         new_instance = pipeline.register_instance()
+        print(f"🔍 DEBUG: Created pipeline instance: {new_instance}")
 
         with client_dict_mutex:
             client_dict[new_instance] = Client(
@@ -250,39 +270,39 @@ def main() -> None:
 
         # Handle disconnections
         def ondisconnedted(c: StreamClient) -> None:
-            print(f"Disconnected by {c.tcp_address()}")
+            print(f"🔍 DEBUG: Client disconnected: {c.tcp_address()}")
             # Remove client from client_dict
             with client_dict_mutex:
                 if c in [value.stream_client for value in client_dict.values()]:
-                    instance_id = [key for key, value in client_dict.items() if value == c][0]
+                    instance_id = [key for key, value in client_dict.items() if value.stream_client == c][0]
                     pipeline.unregister_instance(instance_id)
                     del client_dict[instance_id]
         c.on_disconnected(ondisconnedted)
 
         # Handle timeouts
         def ontimeout(c: StreamClient) -> None:
-            print(f"Timeout by {c.tcp_address()}")
+            print(f"🔍 DEBUG: Client timeout: {c.tcp_address()}")
             # Remove client from client_dict
             with client_dict_mutex:
                 if c in [value.stream_client for value in client_dict.values()]:
-                    instance_id = [key for key, value in client_dict.items() if value == c][0]
+                    instance_id = [key for key, value in client_dict.items() if value.stream_client == c][0]
                     pipeline.unregister_instance(instance_id)
                     del client_dict[instance_id]
         c.on_timeout(ontimeout)
 
         # Handle messages
         def onmsg(c: StreamClient, recv_data: bytes) -> None:
-            # print(f"UDP from: {c.tcp_address()}")
+            print(f"🔍 DEBUG: Received UDP data: {len(recv_data)} bytes from {c.tcp_address()}")
             with client_dict_mutex:
                 if not c in [value.stream_client for value in client_dict.values()]:
-                    print("Client not in client_dict")
+                    print("🔍 DEBUG: Client not in client_dict")
                     c.stop()
                     return
-
 
                 instance_id = [key for key, value in client_dict.items() if value.stream_client == c][0]
                 task = client_dict[instance_id].task
 
+                print(f"🔍 DEBUG: Processing audio for instance: {instance_id}, task: {task}")
 
                 audio_data = data.AudioData(
                                             raw_audio_data=recv_data,
@@ -299,8 +319,9 @@ def main() -> None:
                                 )
 
         def ontcpmsg(c: StreamClient, message: bytes) -> None:
+            print(f"🔍 DEBUG: Received TCP message: {len(message)} bytes from {c.tcp_address()}")
             if not c in [value.stream_client for value in client_dict.values()]:
-                print("Client not in client_dict")
+                print("🔍 DEBUG: Client not in client_dict")
                 c.stop()
                 return
 
@@ -309,19 +330,22 @@ def main() -> None:
             try:
                 string_msg = message.decode("utf-8")
                 json_msg = json.loads(string_msg)
+                print(f"🔍 DEBUG: Parsed TCP message: {json_msg}")
                 # check if json_msg has "task" key
                 if "task" in json_msg:
                     task = json_msg["task"]
                     if task == "transcribe":
                         client_dict[instance_id].task = data.Task.TRANSCRIBE
+                        print(f"🔍 DEBUG: Task set to TRANSCRIBE")
                     elif task == "translate":
                         client_dict[instance_id].task = data.Task.TRANSLATE
+                        print(f"🔍 DEBUG: Task set to TRANSLATE")
                     else:
-                        print(f"Unknown task: {task}")
+                        print(f"🔍 DEBUG: Unknown task: {task}")
                 else:
-                    print(f"No task found in message: {string_msg}")
+                    print(f"🔍 DEBUG: No task found in message: {string_msg}")
             except Exception as e:
-                print(f"Error parsing message: {e}")
+                print(f"🔍 DEBUG: Error parsing TCP message: {e}")
 
 
         # Register message handlers
@@ -330,9 +354,9 @@ def main() -> None:
     srv.on_connected(OnConnected)
 
     # Start server
-    print(f"Starting server: {settings['HOST']}:{settings['TCPPORT']}...")
+    print(f"🔍 DEBUG: Starting server: {settings['HOST']}:{settings['TCPPORT']}...")
     srv.start()
-    print("Ready to transcribe. Press Ctrl+C to stop.")
+    print("🔍 DEBUG: Ready to transcribe. Press Ctrl+C to stop.")
 
     STATUS = "running"
 
@@ -345,9 +369,9 @@ def main() -> None:
 
     # Stop server
     STATUS = "stopping"
-    print("Stopping server...")
+    print("🔍 DEBUG: Stopping server...")
     srv.stop()
-    print("Server stopped")
+    print("🔍 DEBUG: Server stopped")
     STATUS = "stopped"
 
 if __name__ == "__main__":

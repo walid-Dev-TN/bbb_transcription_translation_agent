@@ -351,7 +351,7 @@ class VAD(Module):
 
     def init_module(self) -> None:
         log.info("Loading model vad...")
-        self._model = self.load_vad_model(device=self.device, vad_onset=self.vad_onset, vad_offset=self.vad_offset, use_auth_token=self.use_auth_token, model_fp=self.model_fp)
+        self._model = self.load_vad_model(device=self.device, vad_onset=self.vad_onset, vad_offset=self.vad_offset, model_fp=self.model_fp)
         log.info("VAD model loaded")
 
     def execute(self, dp: DataPackage[data.AudioData], dpc: DataPackageController, dpp: DataPackagePhase, dpm: DataPackageModule) -> None:
@@ -393,7 +393,7 @@ class VAD(Module):
             return
 
 
-    def load_vad_model(self, device: str, vad_onset: float=0.500, vad_offset: float=0.363, use_auth_token: Union[Text, None]=None, model_fp: Union[Text, None]=None) -> VoiceActivitySegmentation:
+    def load_vad_model(self, device: str, vad_onset: float=0.500, vad_offset: float=0.363, model_fp: Union[Text, None]=None) -> VoiceActivitySegmentation:
         model_dir = self.model_path if self.model_path is not None else torch.hub._get_torch_home()
         os.makedirs(model_dir, exist_ok = True)
         if model_fp is None:

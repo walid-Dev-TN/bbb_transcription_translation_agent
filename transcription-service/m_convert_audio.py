@@ -78,6 +78,16 @@ class Convert_Audio(Module):
     ) -> None:
         if not dp.data:
             raise Exception("No data found")
+        
+        # Check if audio is already processed (from PCM)
+        if dp.data.audio_data is not None and isinstance(dp.data.audio_data, np.ndarray):
+            # Audio is already in the right format from Create_Audio_Buffer
+            # Just ensure sample rate is set
+            dp.data.audio_data_sample_rate = self.convert_sample_rate
+            log.info("Audio already processed, skipping conversion")
+            return
+        
+        # Original processing for raw bytes (OGG format)
         if not dp.data.raw_audio_data:
             raise Exception("No audio data found")
 
